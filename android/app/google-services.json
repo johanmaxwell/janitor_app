@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "722957051874",
+    "project_id": "toilet-16b17",
+    "storage_bucket": "toilet-16b17.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722957051874:android:bdc87f9673d8d2cc86fbbb",
+        "android_client_info": {
+          "package_name": "com.example.janitor_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYFxi1JeO3yU-AtEgOBy54fzW6-esGPic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722957051874:android:75543608640a13f886fbbb",
+        "android_client_info": {
+          "package_name": "com.example.public_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYFxi1JeO3yU-AtEgOBy54fzW6-esGPic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
