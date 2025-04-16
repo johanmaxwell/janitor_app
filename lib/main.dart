@@ -8,6 +8,7 @@ import 'package:janitor_app/pages/chart/chart_page.dart';
 import 'package:janitor_app/pages/janitor_page.dart';
 import 'package:janitor_app/pages/login_page.dart';
 import 'package:janitor_app/pages/manage_user/manage_user_page.dart';
+import 'package:janitor_app/utils/notification_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -19,6 +20,7 @@ void main() async {
     persistenceEnabled: true,
   );
   await FirebaseAuth.instance.signInAnonymously();
+  await NotificationService.init();
 
   runApp(const JanitorApp());
 }

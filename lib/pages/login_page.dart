@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
       final Map<String, dynamic> userData =
           userDoc.data() as Map<String, dynamic>;
 
-      print("password = ${StringUtil.hashPassword(password)}");
+      // print("password = ${StringUtil.hashPassword(password)}");
       if (userData['password'] == StringUtil.hashPassword(password)) {
         if (userData['role'] == 'admin') {
           SharedPreferences preferences = await SharedPreferences.getInstance();
