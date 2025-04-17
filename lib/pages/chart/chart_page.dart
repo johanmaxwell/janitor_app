@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:janitor_app/pages/chart/logs_bar_chart.dart';
+import 'package:janitor_app/pages/chart/logs_chart.dart';
 
 class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
@@ -28,47 +28,57 @@ class _ChartPageState extends State<ChartPage> {
   Stream<Map<String, int>> getLogsGroupedByMode(
     String mode,
     String type,
-    String status,
+    String? status,
   ) {
-    return FirebaseFirestore.instance
-        .collection('logs')
-        .where('type', isEqualTo: type)
-        .where('status', isEqualTo: status)
+    Query query = FirebaseFirestore.instance.collection('logs')
+      ..where('type', isEqualTo: type);
+
+    if (type != 'pengunjung' && status != null) {
+      query = query.where('status', isEqualTo: status);
+    }
+
+    query = query
         .where(
           'timestamp',
           isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate!),
         )
-        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!))
-        .snapshots()
-        .map((snapshot) {
-          final Map<String, int> groupedData = {};
+        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!));
 
-          for (var doc in snapshot.docs) {
-            final timestamp = (doc['timestamp'] as Timestamp).toDate();
-            String key;
+    return query.snapshots().map((snapshot) {
+      final Map<String, int> groupedData = {};
+      for (var doc in snapshot.docs) {
+        final timestamp = (doc['timestamp'] as Timestamp).toDate();
+        String key;
+        switch (mode) {
+          case 'Daily':
+            key = DateFormat('yyyy-MM-dd').format(timestamp);
+            break;
+          case 'Weekly':
+            final week = weekNumber(timestamp);
+            key = '${timestamp.year}-W$week';
+            break;
+          case 'Monthly':
+            key = DateFormat('yyyy-MM').format(timestamp);
+            break;
+          case 'Yearly':
+            key = DateFormat('yyyy').format(timestamp);
+            break;
+          default:
+            key = '';
+        }
+        groupedData[key] = (groupedData[key] ?? 0) + 1;
+      }
 
-            switch (mode) {
-              case 'Daily':
-                key = DateFormat('yyyy-MM-dd').format(timestamp);
-                break;
-              case 'Weekly':
-                final week = weekNumber(timestamp);
-                key = '${timestamp.year}-W$week';
-                break;
-              case 'Monthly':
-                key = DateFormat('yyyy-MM').format(timestamp);
-                break;
-              case 'Yearly':
-                key = DateFormat('yyyy').format(timestamp);
-                break;
-              default:
-                key = '';
-            }
-
-            groupedData[key] = (groupedData[key] ?? 0) + 1;
-          }
-          return groupedData;
+      if (type == 'pengunjung') {
+        final adjustedData = <String, int>{};
+        groupedData.forEach((key, value) {
+          adjustedData[key] = (value / 2).round();
         });
+        return adjustedData;
+      }
+
+      return groupedData;
+    });
   }
 
   int weekNumber(DateTime date) {
@@ -187,7 +197,7 @@ class _ChartPageState extends State<ChartPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                LogsBarChart(
+                LogsChart(
                   title: 'Occupancy Logs',
                   stream: getLogsGroupedByMode(
                     _selectedMode!,
@@ -196,27 +206,42 @@ class _ChartPageState extends State<ChartPage> {
                   ),
                   color: Colors.green,
                   mode: _selectedMode!,
+                  chartType: 'bar',
                 ),
                 const SizedBox(height: 32),
-                LogsBarChart(
+                LogsChart(
                   title: 'Tissue Logs',
                   stream: getLogsGroupedByMode(_selectedMode!, 'tisu', 'good'),
                   color: Colors.blue,
                   mode: _selectedMode!,
+                  chartType: 'bar',
                 ),
                 const SizedBox(height: 32),
-                LogsBarChart(
+                LogsChart(
                   title: 'Smell Logs',
                   stream: getLogsGroupedByMode(_selectedMode!, 'bau', 'good'),
                   color: Colors.orange,
                   mode: _selectedMode!,
+                  chartType: 'bar',
                 ),
                 const SizedBox(height: 32),
-                LogsBarChart(
+                LogsChart(
                   title: 'Soap Logs',
                   stream: getLogsGroupedByMode(_selectedMode!, 'sabun', 'good'),
                   color: Colors.purple,
                   mode: _selectedMode!,
+                  chartType: 'bar',
+                ),
+                LogsChart(
+                  title: 'Visitor Count',
+                  stream: getLogsGroupedByMode(
+                    _selectedMode!,
+                    'pengunjung',
+                    null,
+                  ),
+                  color: Colors.red,
+                  mode: _selectedMode!,
+                  chartType: 'line',
                 ),
               ],
             ),

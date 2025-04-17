@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:janitor_app/pages/chart/bar_chart_widget.dart';
+import 'package:janitor_app/pages/chart/line_chart_widget.dart';
 
-class LogsBarChart extends StatelessWidget {
+class LogsChart extends StatelessWidget {
   final String title;
   final Stream<Map<String, int>> stream;
   final Color color;
   final String mode;
+  final String chartType;
 
-  const LogsBarChart({
+  const LogsChart({
     super.key,
     required this.title,
     required this.stream,
     required this.color,
     required this.mode,
+    required this.chartType,
   });
 
   @override
@@ -35,7 +38,12 @@ class LogsBarChart extends StatelessWidget {
               }
 
               final data = snapshot.data!;
-              return BarChartWidget(data: data, color: color, mode: mode);
+
+              if (chartType == 'bar') {
+                return BarChartWidget(data: data, color: color, mode: mode);
+              } else {
+                return LineChartWidget(data: data, color: color, mode: mode);
+              }
             },
           ),
         ),
