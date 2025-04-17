@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:janitor_app/pages/chart/logs_bar_chart.dart';
 
 class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
@@ -11,13 +11,34 @@ class ChartPage extends StatefulWidget {
 }
 
 class _ChartPageState extends State<ChartPage> {
-  String _selectedMode = 'Monthly';
+  String? _selectedMode;
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMode = 'Daily';
+    _startDate = DateTime.now().subtract(const Duration(days: 7));
+    _endDate = DateTime.now();
+  }
+
   final List<String> modes = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
 
-  Stream<Map<String, int>> getLogsGroupedByMode(String mode) {
+  Stream<Map<String, int>> getLogsGroupedByMode(
+    String mode,
+    String type,
+    String status,
+  ) {
     return FirebaseFirestore.instance
         .collection('logs')
-        .where('status', isEqualTo: 'occupied')
+        .where('type', isEqualTo: type)
+        .where('status', isEqualTo: status)
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate!),
+        )
+        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!))
         .snapshots()
         .map((snapshot) {
           final Map<String, int> groupedData = {};
@@ -46,7 +67,6 @@ class _ChartPageState extends State<ChartPage> {
 
             groupedData[key] = (groupedData[key] ?? 0) + 1;
           }
-
           return groupedData;
         });
   }
@@ -57,157 +77,152 @@ class _ChartPageState extends State<ChartPage> {
     return ((daysOffset + firstDayOfYear.weekday) / 7).ceil();
   }
 
+  Future<void> _selectDateRange(BuildContext context) async {
+    final initialStartDate =
+        _startDate ?? DateTime.now().subtract(const Duration(days: 7));
+    final initialEndDate = _endDate ?? DateTime.now();
+
+    final pickedDates = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: initialStartDate,
+        end: initialEndDate,
+      ),
+    );
+
+    if (pickedDates != null) {
+      setState(() {
+        _startDate = pickedDates.start;
+        _endDate = pickedDates.end;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // 🔽 Dropdown for selecting mode
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          color: Colors.tealAccent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Occupied Logs',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 50),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Logs Dashboard',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey, width: 1),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedMode,
+                        icon: const Icon(
+                          Icons.arrow_drop_down,
+                          size: 30,
+                          color: Colors.black87,
+                        ),
+                        iconSize: 30,
+                        elevation: 16,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedMode = value!;
+                          });
+                        },
+                        items:
+                            modes.map((mode) {
+                              return DropdownMenuItem<String>(
+                                value: mode,
+                                child: Text(mode),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              DropdownButton<String>(
-                value: _selectedMode,
-                items:
-                    modes.map((mode) {
-                      return DropdownMenuItem(value: mode, child: Text(mode));
-                    }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedMode = value!;
-                  });
-                },
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _selectDateRange(context),
+                    child: Text(
+                      'Filter (${DateFormat('dd MMM yyyy').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)})',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // 📊 Real-time chart based on selected mode
-          StreamBuilder<Map<String, int>>(
-            stream: getLogsGroupedByMode(_selectedMode),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final data = snapshot.data!;
-              return AspectRatio(
-                aspectRatio: 1.7,
-                child: buildDynamicBarChart(data, _selectedMode),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildDynamicBarChart(Map<String, int> data, String mode) {
-    final sortedKeys = data.keys.toList()..sort((a, b) => a.compareTo(b));
-    final values = sortedKeys.map((key) => data[key] ?? 0).toList();
-
-    final maxY =
-        values.isEmpty
-            ? 10
-            : (values.reduce((a, b) => a > b ? a : b) * 1.1).ceil();
-
-    // Determine Y-axis step
-    int step;
-    if (maxY <= 10) {
-      step = 2;
-    } else if (maxY <= 50) {
-      step = 10;
-    } else if (maxY <= 100) {
-      step = 20;
-    } else if (maxY <= 500) {
-      step = 50;
-    } else {
-      step = 100;
-    }
-
-    final barGroups = List.generate(sortedKeys.length, (index) {
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: values[index].toDouble(),
-            color: Colors.green,
-            width: 16,
-            borderRadius: BorderRadius.zero,
-          ),
-        ],
-      );
-    });
-
-    return BarChart(
-      BarChartData(
-        maxY: maxY.toDouble(),
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: step.toDouble(),
-              getTitlesWidget: (value, meta) {
-                if (value % step == 0) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                } else {
-                  return const SizedBox.shrink();
-                }
-              },
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: 1,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index >= 0 && index < sortedKeys.length) {
-                  final label = sortedKeys[index];
-                  // Simplify label based on mode
-                  if (mode == 'Daily') {
-                    return Text(
-                      label.substring(5),
-                      style: const TextStyle(fontSize: 10),
-                    );
-                  }
-                  if (mode == 'Monthly') {
-                    return Text(
-                      label.substring(5),
-                      style: const TextStyle(fontSize: 10),
-                    );
-                  }
-                  if (mode == 'Weekly') {
-                    return Text(
-                      label.split('-W').last,
-                      style: const TextStyle(fontSize: 10),
-                    );
-                  }
-                  if (mode == 'Yearly') {
-                    return Text(label, style: const TextStyle(fontSize: 10));
-                  }
-                  return Text(label, style: const TextStyle(fontSize: 10));
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
-        borderData: FlBorderData(show: true),
-        alignment: BarChartAlignment.spaceAround,
-      ),
+
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LogsBarChart(
+                  title: 'Occupancy Logs',
+                  stream: getLogsGroupedByMode(
+                    _selectedMode!,
+                    'okupansi',
+                    'occupied',
+                  ),
+                  color: Colors.green,
+                  mode: _selectedMode!,
+                ),
+                const SizedBox(height: 32),
+                LogsBarChart(
+                  title: 'Tissue Logs',
+                  stream: getLogsGroupedByMode(_selectedMode!, 'tisu', 'good'),
+                  color: Colors.blue,
+                  mode: _selectedMode!,
+                ),
+                const SizedBox(height: 32),
+                LogsBarChart(
+                  title: 'Smell Logs',
+                  stream: getLogsGroupedByMode(_selectedMode!, 'bau', 'good'),
+                  color: Colors.orange,
+                  mode: _selectedMode!,
+                ),
+                const SizedBox(height: 32),
+                LogsBarChart(
+                  title: 'Soap Logs',
+                  stream: getLogsGroupedByMode(_selectedMode!, 'sabun', 'good'),
+                  color: Colors.purple,
+                  mode: _selectedMode!,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
