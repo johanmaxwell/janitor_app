@@ -7,7 +7,7 @@ import 'package:janitor_app/pages/admin_page.dart';
 import 'package:janitor_app/pages/chart/chart_page.dart';
 import 'package:janitor_app/pages/janitor_page.dart';
 import 'package:janitor_app/pages/login_page.dart';
-import 'package:janitor_app/pages/manage_user/manage_user_page.dart';
+import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
 import 'package:janitor_app/utils/notification_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -40,7 +40,7 @@ class JanitorApp extends StatelessWidget {
         '/janitor': (context) => const JanitorPage(),
         '/admin': (context) => const AdminPage(),
         '/chart': (context) => const ChartPage(),
-        '/user': (context) => const ManageUserPage(),
+        '/user': (context) => const ManageJanitorPage(),
       },
       home: LoginPage(),
     );

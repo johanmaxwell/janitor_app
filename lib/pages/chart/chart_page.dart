@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:janitor_app/pages/chart/logs_chart.dart';
+import 'package:janitor_app/utils/string_util.dart';
 
 class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
@@ -14,6 +15,26 @@ class _ChartPageState extends State<ChartPage> {
   String? _selectedMode;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _showAdvancedFilters = false;
+
+  String? _selectedGedung;
+  String? _selectedGender;
+  String? _selectedLokasi;
+
+  List<String> _gedungList = [];
+  List<String> _lokasiList = [];
+
+  Future<void> fetchGedungAndLocationLists() async {
+    final gedungSnapshot =
+        await FirebaseFirestore.instance.collection('sensor').get();
+    final lokasiSnapshot =
+        await FirebaseFirestore.instance.collection('lokasi').get();
+
+    setState(() {
+      _gedungList = gedungSnapshot.docs.map((doc) => doc.id).toList();
+      _lokasiList = lokasiSnapshot.docs.map((doc) => doc.id).toList();
+    });
+  }
 
   @override
   void initState() {
@@ -21,9 +42,12 @@ class _ChartPageState extends State<ChartPage> {
     _selectedMode = 'Daily';
     _startDate = DateTime.now().subtract(const Duration(days: 7));
     _endDate = DateTime.now();
+
+    fetchGedungAndLocationLists();
   }
 
   final List<String> modes = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+  final List<String> genders = ['Pria', 'Wanita'];
 
   Stream<Map<String, int>> getLogsGroupedByMode(
     String mode,
@@ -43,6 +67,17 @@ class _ChartPageState extends State<ChartPage> {
           isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate!),
         )
         .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!));
+
+    // Add optional filters
+    if (_selectedGedung != null) {
+      query = query.where('gedung', isEqualTo: _selectedGedung);
+    }
+    if (_selectedGender != null) {
+      query = query.where('gender', isEqualTo: _selectedGender);
+    }
+    if (_selectedLokasi != null) {
+      query = query.where('lokasi', isEqualTo: _selectedLokasi);
+    }
 
     return query.snapshots().map((snapshot) {
       final Map<String, int> groupedData = {};
@@ -132,7 +167,6 @@ class _ChartPageState extends State<ChartPage> {
                       color: Colors.black87,
                     ),
                   ),
-
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -187,10 +221,70 @@ class _ChartPageState extends State<ChartPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Show Advanced Filters'),
+                  Switch(
+                    value: _showAdvancedFilters,
+                    onChanged: (value) {
+                      setState(() {
+                        _showAdvancedFilters = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (_showAdvancedFilters)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDropdown(
+                        label: 'Gedung',
+                        items: _gedungList,
+                        hint: 'Select Gedung',
+                        value: _selectedGedung,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedGedung = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildDropdown(
+                        label: 'Gender',
+                        items: genders,
+                        hint: 'Select Gender',
+                        value: _selectedGender,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedGender = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildDropdown(
+                        label: 'Lokasi',
+                        items: _lokasiList,
+                        hint: 'Select Lokasi',
+                        value: _selectedLokasi,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedLokasi = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
-
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -248,6 +342,45 @@ class _ChartPageState extends State<ChartPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required List<String> items,
+    required String hint,
+    String? value,
+    required Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label),
+          const SizedBox(height: 4),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: hint,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            isExpanded: true,
+            value: value,
+            onChanged: onChanged,
+            items:
+                items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(
+                      StringUtil.snakeToCapitalized(item),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      ),
     );
   }
 }

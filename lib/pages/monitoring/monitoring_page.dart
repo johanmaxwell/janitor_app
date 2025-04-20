@@ -39,32 +39,37 @@ class _MonitoringPageState extends State<MonitoringPage> {
         FutureBuilder<List<String>>(
           future: gedungFuture,
           builder: (context, snapshot) {
-            if (!snapshot.hasData) return const CircularProgressIndicator();
-            final gedungList = snapshot.data!;
+            final gedungList = snapshot.data ?? [];
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: GedungDropdown(
-                gedungList: gedungList,
-                selectedGedung: selectedGedung,
-                onChanged: (value) {
-                  setState(() {
-                    selectedGedung = value;
-                  });
-                },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GedungDropdown(
+                      gedungList: gedungList,
+                      selectedGedung: selectedGedung,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedGedung = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GenderDropdown(
+                      selectedGender: selectedGender,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedGender = value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
               ),
             );
           },
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: GenderDropdown(
-            selectedGender: selectedGender,
-            onChanged: (value) {
-              setState(() {
-                selectedGender = value;
-              });
-            },
-          ),
         ),
         if (selectedGedung != null && selectedGender != null)
           _buildToiletAccordionList(),

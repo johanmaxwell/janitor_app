@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:janitor_app/dummy.dart';
 import 'package:janitor_app/pages/chart/chart_page.dart';
-import 'package:janitor_app/pages/manage_user/manage_user_page.dart';
+import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
 import 'package:janitor_app/pages/monitoring/monitoring_page.dart';
 
 class AdminPage extends StatefulWidget {
@@ -16,8 +17,8 @@ class _AdminPageState extends State<AdminPage> {
 
   final List<Widget> _pages = [
     MonitoringPage(role: 'admin'),
-    ChartPage(),
-    ManageUserPage(),
+    MyWidget(),
+    ManageJanitorPage(),
   ];
 
   void _onItemTapped(int index) {

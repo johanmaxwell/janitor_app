@@ -42,7 +42,8 @@ class LineChartWidget extends StatelessWidget {
     }
 
     // Limit bottom labels (interval)
-    final labelInterval = (sortedKeys.length / 6).ceil();
+    int labelInterval = (sortedKeys.length / 6).ceil();
+    labelInterval = labelInterval == 0 ? 1 : labelInterval;
 
     final spots = List.generate(sortedKeys.length, (index) {
       return FlSpot(index.toDouble(), values[index].toDouble());
@@ -54,16 +55,13 @@ class LineChartWidget extends StatelessWidget {
         LineChartData(
           minY: 0,
           maxY: maxY.toDouble(),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false, // Disable vertical grid lines
-          ),
+          gridData: FlGridData(show: true, drawVerticalLine: false),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: step.toDouble(), // Add interval for Y-axis labels
+                interval: step.toDouble(),
                 getTitlesWidget: (value, meta) {
                   if (value % step == 0) {
                     return Text(
@@ -79,7 +77,7 @@ class LineChartWidget extends StatelessWidget {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: labelInterval.toDouble(), // Limit bottom labels
+                interval: labelInterval.toDouble(),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < sortedKeys.length) {
@@ -122,12 +120,8 @@ class LineChartWidget extends StatelessWidget {
                 },
               ),
             ),
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ), // Remove right labels
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ), // Remove top labels
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: true),
           lineBarsData: [

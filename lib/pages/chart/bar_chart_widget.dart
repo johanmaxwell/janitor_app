@@ -38,7 +38,8 @@ class BarChartWidget extends StatelessWidget {
       step = 100;
     }
 
-    final int labelInterval = (sortedKeys.length / 6).ceil();
+    int labelInterval = (sortedKeys.length / 6).ceil();
+    labelInterval = labelInterval == 0 ? 1 : labelInterval;
 
     final barGroups = List.generate(sortedKeys.length, (index) {
       return BarChartGroupData(
