@@ -1,6 +1,8 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:janitor_app/main.dart';
+import 'package:janitor_app/pages/login_page.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin
@@ -75,8 +77,8 @@ class NotificationService {
   }
 
   static void _handleNotificationTap() {
-    navigatorKey.currentState?.pushNamedAndRemoveUntil(
-      '/login',
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
     );
   }

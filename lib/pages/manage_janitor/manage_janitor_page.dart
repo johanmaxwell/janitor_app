@@ -230,7 +230,6 @@ class _ManageJanitorPageState extends State<ManageJanitorPage> {
                       _fullNameController.clear();
                       _usernameController.clear();
                       _passwordController.clear();
-                      if (!mounted) return;
                       Navigator.pop(context);
                     }
                   }
@@ -243,7 +242,6 @@ class _ManageJanitorPageState extends State<ManageJanitorPage> {
   }
 
   Future<void> _deleteJanitor(String janitorId) async {
-    // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder:

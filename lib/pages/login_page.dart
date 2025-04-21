@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:janitor_app/main.dart';
+import 'package:janitor_app/pages/admin_page.dart';
+import 'package:janitor_app/pages/janitor_page.dart';
 import 'package:janitor_app/utils/string_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +17,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  String company = '';
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -166,13 +169,18 @@ class _LoginPageState extends State<LoginPage> {
       final Map<String, dynamic> userData =
           userDoc.data() as Map<String, dynamic>;
 
-      // print("password = ${StringUtil.hashPassword(password)}");
+      company = userData['company'];
+
+      print("password = ${StringUtil.hashPassword(password)}");
       if (userData['password'] == StringUtil.hashPassword(password)) {
         if (userData['role'] == 'admin') {
           SharedPreferences preferences = await SharedPreferences.getInstance();
-          await preferences.setString('loginData', userData['role']);
+          await preferences.setString('role', userData['role']);
+          await preferences.setString('company', userData['company']);
 
-          navigatorKey.currentState?.pushReplacementNamed('/admin');
+          if (mounted) {
+            navigateToPage(context, AdminPage(company));
+          }
         } else {
           final fcmToken = await FirebaseMessaging.instance.getToken();
 
@@ -186,27 +194,36 @@ class _LoginPageState extends State<LoginPage> {
               }, SetOptions(merge: true));
 
           SharedPreferences preferences = await SharedPreferences.getInstance();
-          await preferences.setString('loginData', userData['role']);
+          await preferences.setString('role', userData['role']);
+          await preferences.setString('company', userData['company']);
 
-          navigatorKey.currentState?.pushReplacementNamed('/janitor');
+          if (mounted) {
+            navigateToPage(context, JanitorPage(company));
+          }
         }
+      } else {
+        if (!mounted) return;
+        showLoginFailedDialog(context);
+        usernameController.clear();
+        passwordController.clear();
       }
-    } else {
-      if (!mounted) return;
-      showLoginFailedDialog(context);
-      usernameController.clear();
-      passwordController.clear();
     }
   }
 
   Future<void> checkAutoLogin() async {
     SharedPreferences preferences = await SharedPreferences.getInstance();
-    final loginData = preferences.getString('loginData');
-    if (loginData != null && loginData.isNotEmpty) {
-      if (loginData == 'admin') {
-        navigatorKey.currentState?.pushReplacementNamed('/admin');
-      } else {
-        navigatorKey.currentState?.pushReplacementNamed('/janitor');
+    final role = preferences.getString('role');
+    final company = preferences.getString('company');
+
+    if (company == null) return;
+
+    if (role != null && role.isNotEmpty) {
+      if (mounted) {
+        if (role == 'admin') {
+          navigateToPage(context, AdminPage(company));
+        } else {
+          navigateToPage(context, JanitorPage(company));
+        }
       }
     }
   }
@@ -268,6 +285,13 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       },
+    );
+  }
+
+  void navigateToPage(BuildContext context, Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
     );
   }
 }

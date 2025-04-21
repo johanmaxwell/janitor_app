@@ -8,6 +8,7 @@ class MonitoringAccordionList extends StatelessWidget {
   final Map<String, List<SensorData>> tisuFloorMap;
   final Map<String, List<SensorData>> bauFloorMap;
   final Map<String, List<SensorData>> sabunFloorMap;
+  final Map<String, List<SensorData>> bateraiFloorMap;
   final String gender;
 
   const MonitoringAccordionList({
@@ -15,6 +16,7 @@ class MonitoringAccordionList extends StatelessWidget {
     required this.tisuFloorMap,
     required this.bauFloorMap,
     required this.sabunFloorMap,
+    required this.bateraiFloorMap,
     required this.gender,
   });
 
@@ -24,12 +26,18 @@ class MonitoringAccordionList extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children:
-            _checkFloorList(tisuFloorMap, bauFloorMap, sabunFloorMap).map((
-              lokasi,
-            ) {
+            _checkFloorList(
+              tisuFloorMap,
+              bauFloorMap,
+              sabunFloorMap,
+              bateraiFloorMap,
+            ).map((lokasi) {
               final tisu = List<SensorData>.from(tisuFloorMap[lokasi] ?? []);
               final bau = List<SensorData>.from(bauFloorMap[lokasi] ?? []);
               final sabun = List<SensorData>.from(sabunFloorMap[lokasi] ?? []);
+              final baterai = List<SensorData>.from(
+                bateraiFloorMap[lokasi] ?? [],
+              );
 
               tisu.sort(
                 (a, b) => int.parse(a.number).compareTo(int.parse(b.number)),
@@ -38,6 +46,9 @@ class MonitoringAccordionList extends StatelessWidget {
                 (a, b) => int.parse(a.number).compareTo(int.parse(b.number)),
               );
               sabun.sort(
+                (a, b) => int.parse(a.number).compareTo(int.parse(b.number)),
+              );
+              baterai.sort(
                 (a, b) => int.parse(a.number).compareTo(int.parse(b.number)),
               );
 
@@ -57,7 +68,7 @@ class MonitoringAccordionList extends StatelessWidget {
                         const Spacer(),
                         Icon(
                           Icons.circle,
-                          color: _getStatusColor(tisu, bau, sabun),
+                          color: _getStatusColor(tisu, bau, sabun, baterai),
                         ),
                       ],
                     ),
@@ -92,6 +103,16 @@ class MonitoringAccordionList extends StatelessWidget {
                       title: "Sabun",
                       items: sabun,
                       icon: FontAwesomeIcons.pumpSoap,
+                    ),
+                    const Divider(
+                      thickness: 0.5,
+                      height: 30,
+                      color: Colors.grey,
+                    ),
+                    _buildSensorSection(
+                      title: "Baterai",
+                      items: baterai,
+                      icon: FontAwesomeIcons.batteryFull,
                     ),
                   ],
                 ),
@@ -138,6 +159,8 @@ class MonitoringAccordionList extends StatelessWidget {
                       );
                     } else if (title == 'Sabun') {
                       text = 'Sabun ${item.number}';
+                    } else if (title == 'Baterai') {
+                      text = 'Device ${item.number}';
                     } else {
                       text = 'Toilet ${item.number}';
                     }
@@ -160,17 +183,19 @@ class MonitoringAccordionList extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        PercentageIcon(
-                          icon: icon,
-                          percentage: percentage!,
-                          color: color,
-                        ),
+                        title != 'Baterai'
+                            ? PercentageIcon(
+                              icon: icon,
+                              percentage: percentage!,
+                              color: color,
+                            )
+                            : chooseBaterai(item.status),
                         const SizedBox(height: 2),
                         Text(text, style: const TextStyle(fontSize: 12)),
                         Text(
                           title == 'Bau'
                               ? item.status.toUpperCase()
-                              : "${(percentage * 100).toStringAsFixed(0)}%",
+                              : "${(percentage! * 100).toStringAsFixed(0)}%",
                           style: const TextStyle(fontSize: 12),
                         ),
                       ],
@@ -187,15 +212,19 @@ class MonitoringAccordionList extends StatelessWidget {
     Map<String, List<SensorData>> tisuFloorMap,
     Map<String, List<SensorData>> bauFloorMap,
     Map<String, List<SensorData>> sabunFloorMap,
+    Map<String, List<SensorData>> bateraiFloorMap,
   ) {
     final keysTisu = tisuFloorMap.keys.toSet();
     final keysBau = bauFloorMap.keys.toSet();
     final keysSabun = sabunFloorMap.keys.toSet();
+    final keysBaterai = bateraiFloorMap.keys.toSet();
 
     if (!keysTisu.containsAll(keysBau) &&
         keysBau.containsAll(keysSabun) &&
-        keysSabun.containsAll(keysTisu)) {
-      final merged = {...keysTisu, ...keysBau, ...keysSabun}.toList();
+        keysSabun.containsAll(keysTisu) &&
+        keysTisu.containsAll(keysBaterai)) {
+      final merged =
+          {...keysTisu, ...keysBau, ...keysSabun, ...keysBaterai}.toList();
       merged.sort();
       return merged;
     } else {
@@ -207,16 +236,19 @@ class MonitoringAccordionList extends StatelessWidget {
     List<SensorData> tisuList,
     List<SensorData> bauList,
     List<SensorData> sabunList,
+    List<SensorData> bateraiList,
   ) {
     final hasBad =
         tisuList.any((e) => e.status == 'bad') ||
         bauList.any((e) => e.status == 'bad') ||
-        sabunList.any((e) => e.status == 'bad');
+        sabunList.any((e) => e.status == 'bad') ||
+        bateraiList.any((e) => e.status == 'bad');
 
     final hasOk =
         tisuList.any((e) => e.status == 'ok') ||
         bauList.any((e) => e.status == 'ok') ||
-        sabunList.any((e) => e.status == 'ok');
+        sabunList.any((e) => e.status == 'ok') ||
+        bateraiList.any((e) => e.status == 'ok');
 
     if (hasBad) {
       return Colors.red;
@@ -224,6 +256,16 @@ class MonitoringAccordionList extends StatelessWidget {
       return Colors.yellow;
     } else {
       return Colors.green;
+    }
+  }
+
+  Widget chooseBaterai(String status) {
+    if (status == 'good') {
+      return Icon(FontAwesomeIcons.batteryFull, color: Colors.green, size: 40);
+    } else if (status == 'ok') {
+      return Icon(FontAwesomeIcons.batteryHalf, color: Colors.yellow, size: 40);
+    } else {
+      return Icon(FontAwesomeIcons.batteryQuarter, color: Colors.red, size: 40);
     }
   }
 }

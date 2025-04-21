@@ -24,15 +24,12 @@ class _ChartPageState extends State<ChartPage> {
   List<String> _gedungList = [];
   List<String> _lokasiList = [];
 
-  Future<void> fetchGedungAndLocationLists() async {
+  Future<void> fetchGedungList() async {
     final gedungSnapshot =
         await FirebaseFirestore.instance.collection('sensor').get();
-    final lokasiSnapshot =
-        await FirebaseFirestore.instance.collection('lokasi').get();
 
     setState(() {
       _gedungList = gedungSnapshot.docs.map((doc) => doc.id).toList();
-      _lokasiList = lokasiSnapshot.docs.map((doc) => doc.id).toList();
     });
   }
 
@@ -43,7 +40,7 @@ class _ChartPageState extends State<ChartPage> {
     _startDate = DateTime.now().subtract(const Duration(days: 7));
     _endDate = DateTime.now();
 
-    fetchGedungAndLocationLists();
+    fetchGedungList();
   }
 
   final List<String> modes = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
@@ -273,9 +270,19 @@ class _ChartPageState extends State<ChartPage> {
                         items: _lokasiList,
                         hint: 'Select Lokasi',
                         value: _selectedLokasi,
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _selectedLokasi = value;
+                          });
+                          final lokasiSnapshot =
+                              await FirebaseFirestore.instance
+                                  .collection('lokasi')
+                                  .get();
+                          setState(() {
+                            _lokasiList =
+                                lokasiSnapshot.docs
+                                    .map((doc) => doc.id)
+                                    .toList();
                           });
                         },
                       ),

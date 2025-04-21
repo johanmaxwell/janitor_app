@@ -6,7 +6,9 @@ import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
 import 'package:janitor_app/pages/monitoring/monitoring_page.dart';
 
 class AdminPage extends StatefulWidget {
-  const AdminPage({super.key});
+  final String company;
+
+  const AdminPage(this.company, {super.key});
 
   @override
   State<AdminPage> createState() => _AdminPageState();
@@ -14,12 +16,17 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   int _selectedIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    MonitoringPage(role: 'admin'),
-    MyWidget(),
-    ManageJanitorPage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      MonitoringPage(role: 'admin', company: widget.company),
+      MyWidget(),
+      ManageJanitorPage(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {

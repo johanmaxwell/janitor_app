@@ -3,11 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:janitor_app/firebase_options.dart';
-import 'package:janitor_app/pages/admin_page.dart';
-import 'package:janitor_app/pages/chart/chart_page.dart';
-import 'package:janitor_app/pages/janitor_page.dart';
 import 'package:janitor_app/pages/login_page.dart';
-import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
 import 'package:janitor_app/utils/notification_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -35,13 +31,6 @@ class JanitorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Roboto'),
-      routes: {
-        '/login': (context) => const LoginPage(),
-        '/janitor': (context) => const JanitorPage(),
-        '/admin': (context) => const AdminPage(),
-        '/chart': (context) => const ChartPage(),
-        '/user': (context) => const ManageJanitorPage(),
-      },
       home: LoginPage(),
     );
   }

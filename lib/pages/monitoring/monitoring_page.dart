@@ -8,7 +8,9 @@ import 'package:janitor_app/pages/monitoring/header.dart';
 
 class MonitoringPage extends StatefulWidget {
   final String role;
-  const MonitoringPage({super.key, required this.role});
+  final String company;
+
+  const MonitoringPage({super.key, required this.role, required this.company});
 
   @override
   State<MonitoringPage> createState() => _MonitoringPageState();
@@ -22,12 +24,21 @@ class _MonitoringPageState extends State<MonitoringPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.company.isEmpty) {
+      throw ArgumentError(
+        "Company cannot be empty. Please provide a valid company name.",
+      );
+    }
     gedungFuture = fetchGedungList();
   }
 
   Future<List<String>> fetchGedungList() async {
     final snapshot =
-        await FirebaseFirestore.instance.collection('sensor').get();
+        await FirebaseFirestore.instance
+            .collection('gedung')
+            .doc(widget.company)
+            .collection('daftar')
+            .get();
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
@@ -81,26 +92,38 @@ class _MonitoringPageState extends State<MonitoringPage> {
     final tisuStream =
         FirebaseFirestore.instance
             .collection('sensor')
+            .doc(widget.company)
+            .collection(selectedGender!)
             .doc(selectedGedung)
             .collection('tisu')
-            .where('gender', isEqualTo: selectedGender)
             .orderBy('lokasi')
             .snapshots();
 
     final bauStream =
         FirebaseFirestore.instance
             .collection('sensor')
+            .doc(widget.company)
+            .collection(selectedGender!)
             .doc(selectedGedung)
             .collection('bau')
-            .where('gender', isEqualTo: selectedGender)
             .snapshots();
 
     final sabunStream =
         FirebaseFirestore.instance
             .collection('sensor')
+            .doc(widget.company)
+            .collection(selectedGender!)
             .doc(selectedGedung)
             .collection('sabun')
-            .where('gender', isEqualTo: selectedGender)
+            .snapshots();
+
+    final bateraiStream =
+        FirebaseFirestore.instance
+            .collection('sensor')
+            .doc(widget.company)
+            .collection(selectedGender!)
+            .doc(selectedGedung)
+            .collection('baterai')
             .snapshots();
 
     if (selectedGedung != null && selectedGender != null) {
@@ -125,35 +148,61 @@ class _MonitoringPageState extends State<MonitoringPage> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final tisuFloorMap = <String, List<SensorData>>{};
-                  for (var doc in tisuSnapshot.data!.docs) {
-                    final data = SensorData.fromFirestore(
-                      doc.data() as Map<String, dynamic>,
-                    );
-                    tisuFloorMap.putIfAbsent(data.lokasi, () => []).add(data);
-                  }
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: bateraiStream,
+                    builder: (context, bateraiSnapshot) {
+                      if (!bateraiSnapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  final bauFloorMap = <String, List<SensorData>>{};
-                  for (var doc in bauSnapshot.data!.docs) {
-                    final data = SensorData.fromFirestoreWithoutAmount(
-                      doc.data() as Map<String, dynamic>,
-                    );
-                    bauFloorMap.putIfAbsent(data.lokasi, () => []).add(data);
-                  }
+                      final tisuFloorMap = <String, List<SensorData>>{};
+                      for (var doc in tisuSnapshot.data!.docs) {
+                        final data = SensorData.fromFirestore(
+                          doc.data() as Map<String, dynamic>,
+                        );
+                        tisuFloorMap
+                            .putIfAbsent(data.lokasi, () => [])
+                            .add(data);
+                      }
 
-                  final sabunFloorMap = <String, List<SensorData>>{};
-                  for (var doc in sabunSnapshot.data!.docs) {
-                    final data = SensorData.fromFirestore(
-                      doc.data() as Map<String, dynamic>,
-                    );
-                    sabunFloorMap.putIfAbsent(data.lokasi, () => []).add(data);
-                  }
+                      final bauFloorMap = <String, List<SensorData>>{};
+                      for (var doc in bauSnapshot.data!.docs) {
+                        final data = SensorData.fromFirestoreWithoutAmount(
+                          doc.data() as Map<String, dynamic>,
+                        );
+                        bauFloorMap
+                            .putIfAbsent(data.lokasi, () => [])
+                            .add(data);
+                      }
 
-                  return MonitoringAccordionList(
-                    tisuFloorMap: tisuFloorMap,
-                    bauFloorMap: bauFloorMap,
-                    sabunFloorMap: sabunFloorMap,
-                    gender: selectedGender!,
+                      final sabunFloorMap = <String, List<SensorData>>{};
+                      for (var doc in sabunSnapshot.data!.docs) {
+                        final data = SensorData.fromFirestore(
+                          doc.data() as Map<String, dynamic>,
+                        );
+                        sabunFloorMap
+                            .putIfAbsent(data.lokasi, () => [])
+                            .add(data);
+                      }
+
+                      final bateraiFloorMap = <String, List<SensorData>>{};
+                      for (var doc in bateraiSnapshot.data!.docs) {
+                        final data = SensorData.fromFirestore(
+                          doc.data() as Map<String, dynamic>,
+                        );
+                        bateraiFloorMap
+                            .putIfAbsent(data.lokasi, () => [])
+                            .add(data);
+                      }
+
+                      return MonitoringAccordionList(
+                        tisuFloorMap: tisuFloorMap,
+                        bauFloorMap: bauFloorMap,
+                        sabunFloorMap: sabunFloorMap,
+                        bateraiFloorMap: bateraiFloorMap,
+                        gender: selectedGender!,
+                      );
+                    },
                   );
                 },
               );
