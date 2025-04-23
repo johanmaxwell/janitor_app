@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:janitor_app/dummy.dart';
 import 'package:janitor_app/pages/chart/chart_page.dart';
+import 'package:janitor_app/pages/config_page/config_page.dart';
 import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
 import 'package:janitor_app/pages/monitoring/monitoring_page.dart';
 
@@ -23,8 +24,9 @@ class _AdminPageState extends State<AdminPage> {
     super.initState();
     _pages = [
       MonitoringPage(role: 'admin', company: widget.company),
-      MyWidget(),
+      ChartPage(company: widget.company),
       ManageJanitorPage(),
+      ConfigPage(company: widget.company),
     ];
   }
 
@@ -61,6 +63,10 @@ class _AdminPageState extends State<AdminPage> {
           BottomNavigationBarItem(
             icon: Icon(FontAwesomeIcons.peopleGroup),
             label: 'Users',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(FontAwesomeIcons.gear),
+            label: 'Config',
           ),
         ],
       ),

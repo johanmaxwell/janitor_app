@@ -5,7 +5,9 @@ import 'package:janitor_app/pages/chart/logs_chart.dart';
 import 'package:janitor_app/utils/string_util.dart';
 
 class ChartPage extends StatefulWidget {
-  const ChartPage({super.key});
+  final String company;
+
+  const ChartPage({super.key, required this.company});
 
   @override
   State<ChartPage> createState() => _ChartPageState();
@@ -26,7 +28,11 @@ class _ChartPageState extends State<ChartPage> {
 
   Future<void> fetchGedungList() async {
     final gedungSnapshot =
-        await FirebaseFirestore.instance.collection('sensor').get();
+        await FirebaseFirestore.instance
+            .collection('gedung')
+            .doc(widget.company)
+            .collection('daftar')
+            .get();
 
     setState(() {
       _gedungList = gedungSnapshot.docs.map((doc) => doc.id).toList();
@@ -44,15 +50,17 @@ class _ChartPageState extends State<ChartPage> {
   }
 
   final List<String> modes = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
-  final List<String> genders = ['Pria', 'Wanita'];
+  final List<String> genders = ['pria', 'wanita'];
 
   Stream<Map<String, int>> getLogsGroupedByMode(
     String mode,
     String type,
     String? status,
   ) {
-    Query query = FirebaseFirestore.instance.collection('logs')
-      ..where('type', isEqualTo: type);
+    Query query = FirebaseFirestore.instance
+        .collection('logs')
+        .doc(widget.company)
+        .collection(type);
 
     if (type != 'pengunjung' && status != null) {
       query = query.where('status', isEqualTo: status);
@@ -65,7 +73,6 @@ class _ChartPageState extends State<ChartPage> {
         )
         .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!));
 
-    // Add optional filters
     if (_selectedGedung != null) {
       query = query.where('gedung', isEqualTo: _selectedGedung);
     }
@@ -242,10 +249,25 @@ class _ChartPageState extends State<ChartPage> {
                         items: _gedungList,
                         hint: 'Select Gedung',
                         value: _selectedGedung,
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _selectedGedung = value;
                           });
+
+                          if (_selectedGedung != null) {
+                            final lokasiSnapshot =
+                                await FirebaseFirestore.instance
+                                    .collection('lokasi')
+                                    .doc(widget.company)
+                                    .collection(_selectedGedung!)
+                                    .get();
+                            setState(() {
+                              _lokasiList =
+                                  lokasiSnapshot.docs
+                                      .map((doc) => doc.id)
+                                      .toList();
+                            });
+                          }
                         },
                       ),
                     ),
@@ -273,16 +295,6 @@ class _ChartPageState extends State<ChartPage> {
                         onChanged: (value) async {
                           setState(() {
                             _selectedLokasi = value;
-                          });
-                          final lokasiSnapshot =
-                              await FirebaseFirestore.instance
-                                  .collection('lokasi')
-                                  .get();
-                          setState(() {
-                            _lokasiList =
-                                lokasiSnapshot.docs
-                                    .map((doc) => doc.id)
-                                    .toList();
                           });
                         },
                       ),
@@ -366,7 +378,7 @@ class _ChartPageState extends State<ChartPage> {
         children: [
           Text(label),
           const SizedBox(height: 4),
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<String?>(
             decoration: InputDecoration(
               border: OutlineInputBorder(),
               hintText: hint,
@@ -374,17 +386,28 @@ class _ChartPageState extends State<ChartPage> {
             ),
             isExpanded: true,
             value: value,
-            onChanged: onChanged,
-            items:
-                items.map((item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      StringUtil.snakeToCapitalized(item),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
+            onChanged: (selectedValue) {
+              if (selectedValue == 'none') {
+                onChanged(null);
+              } else {
+                onChanged(selectedValue);
+              }
+            },
+            items: [
+              const DropdownMenuItem<String>(
+                value: 'none',
+                child: Text('None'),
+              ),
+              ...items.map((item) {
+                return DropdownMenuItem<String>(
+                  value: item,
+                  child: Text(
+                    StringUtil.snakeToCapitalized(item),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }),
+            ],
           ),
         ],
       ),
