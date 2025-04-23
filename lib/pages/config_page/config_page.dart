@@ -46,7 +46,7 @@ class _ConfigPageState extends State<ConfigPage> {
         await FirebaseFirestore.instance
             .collection('config')
             .doc(widget.company)
-            .collection(gender)
+            .collection('data')
             .get();
 
     return snapshot.docs.map((doc) => doc.id).toList();

@@ -15,4 +15,12 @@ class StringUtil {
     final bytes = utf8.encode(input);
     return sha256.convert(bytes).toString();
   }
+
+  static String toSnakeCase(String input) {
+    return input
+        .trim()
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+        .toLowerCase();
+  }
 }
