@@ -152,11 +152,8 @@ class MonitoringAccordionList extends StatelessWidget {
               runSpacing: 12,
               children:
                   items.map((item) {
-                    if (title == 'Bau' && item.number.contains('()')) {
-                      text = item.number.substring(
-                        item.number.indexOf('(') + 1,
-                        item.number.indexOf(')'),
-                      );
+                    if (title == 'Bau' && int.parse(item.number) > 1000) {
+                      text = 'Luar';
                     } else if (title == 'Sabun') {
                       text = 'Sabun ${item.number}';
                     } else if (title == 'Baterai') {

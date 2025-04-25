@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:janitor_app/main.dart';
 import 'package:janitor_app/pages/admin_page.dart';
 import 'package:janitor_app/pages/janitor_page.dart';
+import 'package:janitor_app/utils/firebase_usage_monitor.dart';
 import 'package:janitor_app/utils/string_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,6 +21,8 @@ class _LoginPageState extends State<LoginPage> {
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  final usageMonitor = FirestoreUsageMonitor();
 
   @override
   void initState() {
@@ -164,6 +166,8 @@ class _LoginPageState extends State<LoginPage> {
             .limit(1)
             .get();
 
+    usageMonitor.incrementReads(result.docs.length);
+
     if (result.docs.isNotEmpty) {
       DocumentSnapshot userDoc = result.docs.first;
       final Map<String, dynamic> userData =
@@ -171,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
 
       company = userData['company'];
 
-      print("password = ${StringUtil.hashPassword(password)}");
+      //print("password = ${StringUtil.hashPassword(password)}");
       if (userData['password'] == StringUtil.hashPassword(password)) {
         if (userData['role'] == 'admin') {
           SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -192,6 +196,12 @@ class _LoginPageState extends State<LoginPage> {
                 'last_seen': FieldValue.serverTimestamp(),
                 'fcm_token': fcmToken,
               }, SetOptions(merge: true));
+
+          usageMonitor.incrementWrites();
+
+          if (userData[company] != null) {
+            usageMonitor.updateCompanyId(userData[company]);
+          }
 
           SharedPreferences preferences = await SharedPreferences.getInstance();
           await preferences.setString('role', userData['role']);
@@ -219,6 +229,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (role != null && role.isNotEmpty) {
       if (mounted) {
+        usageMonitor.updateCompanyId(company);
         if (role == 'admin') {
           navigateToPage(context, AdminPage(company));
         } else {

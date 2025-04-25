@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:janitor_app/pages/chart/logs_chart.dart';
+import 'package:janitor_app/utils/firebase_usage_monitor.dart';
 import 'package:janitor_app/utils/string_util.dart';
 
 class ChartPage extends StatefulWidget {
@@ -26,6 +27,8 @@ class _ChartPageState extends State<ChartPage> {
   List<String> _gedungList = [];
   List<String> _lokasiList = [];
 
+  final usageMonitor = FirestoreUsageMonitor();
+
   Future<void> fetchGedungList() async {
     final gedungSnapshot =
         await FirebaseFirestore.instance
@@ -33,6 +36,8 @@ class _ChartPageState extends State<ChartPage> {
             .doc(widget.company)
             .collection('daftar')
             .get();
+
+    usageMonitor.incrementReads(gedungSnapshot.docs.length);
 
     setState(() {
       _gedungList = gedungSnapshot.docs.map((doc) => doc.id).toList();
@@ -84,6 +89,8 @@ class _ChartPageState extends State<ChartPage> {
     }
 
     return query.snapshots().map((snapshot) {
+      usageMonitor.incrementReads(snapshot.docs.length);
+
       final Map<String, int> groupedData = {};
       for (var doc in snapshot.docs) {
         final timestamp = (doc['timestamp'] as Timestamp).toDate();

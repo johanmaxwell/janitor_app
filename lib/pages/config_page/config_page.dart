@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:janitor_app/pages/config_page/config_header.dart';
 import 'package:janitor_app/pages/config_page/sensor_form_page.dart';
+import 'package:janitor_app/utils/firebase_usage_monitor.dart';
 import 'package:janitor_app/utils/string_util.dart';
 
 class ConfigPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _ConfigPageState extends State<ConfigPage> {
   String? selectedLokasi;
   String? selectedGender;
   String? selectedDevice;
+  final usageMonitor = FirestoreUsageMonitor();
 
   Future<List<String>> fetchGedungOptions() async {
     final snapshot =
@@ -27,6 +29,7 @@ class _ConfigPageState extends State<ConfigPage> {
             .collection('daftar')
             .get();
 
+    usageMonitor.incrementReads(snapshot.docs.length);
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
@@ -38,6 +41,7 @@ class _ConfigPageState extends State<ConfigPage> {
             .collection(gedung)
             .get();
 
+    usageMonitor.incrementReads(snapshot.docs.length);
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
@@ -49,10 +53,10 @@ class _ConfigPageState extends State<ConfigPage> {
             .collection('data')
             .get();
 
+    usageMonitor.incrementReads(snapshot.docs.length);
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
-  // Function to reset selections
   void resetSelections() {
     setState(() {
       selectedGedung = null;
@@ -127,8 +131,7 @@ class _ConfigPageState extends State<ConfigPage> {
                                 company: widget.company,
                                 gender: selectedGender!,
                                 device: selectedDevice!,
-                                onResetSelections:
-                                    resetSelections, // Pass the reset function
+                                onResetSelections: resetSelections,
                               ),
                         ),
                       );

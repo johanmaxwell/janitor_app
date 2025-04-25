@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:janitor_app/dummy.dart';
 import 'package:janitor_app/pages/chart/chart_page.dart';
 import 'package:janitor_app/pages/config_page/config_page.dart';
 import 'package:janitor_app/pages/manage_janitor/manage_janitor_page.dart';
@@ -8,7 +7,6 @@ import 'package:janitor_app/pages/monitoring/monitoring_page.dart';
 
 class AdminPage extends StatefulWidget {
   final String company;
-
   const AdminPage(this.company, {super.key});
 
   @override
@@ -25,7 +23,7 @@ class _AdminPageState extends State<AdminPage> {
     _pages = [
       MonitoringPage(role: 'admin', company: widget.company),
       ChartPage(company: widget.company),
-      ManageJanitorPage(),
+      ManageJanitorPage(company: widget.company),
       ConfigPage(company: widget.company),
     ];
   }

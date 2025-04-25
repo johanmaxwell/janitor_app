@@ -5,6 +5,7 @@ import 'package:janitor_app/pages/monitoring/accordion_list.dart';
 import 'package:janitor_app/pages/monitoring/gedung_dropdown.dart';
 import 'package:janitor_app/pages/monitoring/gender_dropdown.dart';
 import 'package:janitor_app/pages/monitoring/header.dart';
+import 'package:janitor_app/utils/firebase_usage_monitor.dart';
 
 class MonitoringPage extends StatefulWidget {
   final String role;
@@ -20,15 +21,11 @@ class _MonitoringPageState extends State<MonitoringPage> {
   String? selectedGedung;
   String? selectedGender;
   late Future<List<String>> gedungFuture;
+  final usageMonitor = FirestoreUsageMonitor();
 
   @override
   void initState() {
     super.initState();
-    if (widget.company.isEmpty) {
-      throw ArgumentError(
-        "Company cannot be empty. Please provide a valid company name.",
-      );
-    }
     gedungFuture = fetchGedungList();
   }
 
@@ -39,6 +36,8 @@ class _MonitoringPageState extends State<MonitoringPage> {
             .doc(widget.company)
             .collection('daftar')
             .get();
+
+    usageMonitor.incrementReads(snapshot.docs.length);
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
@@ -133,6 +132,7 @@ class _MonitoringPageState extends State<MonitoringPage> {
           if (!tisuSnapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
+          usageMonitor.incrementReads(tisuSnapshot.data!.size);
 
           return StreamBuilder<QuerySnapshot>(
             stream: bauStream,
@@ -140,6 +140,7 @@ class _MonitoringPageState extends State<MonitoringPage> {
               if (!bauSnapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
+              usageMonitor.incrementReads(bauSnapshot.data!.size);
 
               return StreamBuilder<QuerySnapshot>(
                 stream: sabunStream,
@@ -147,6 +148,7 @@ class _MonitoringPageState extends State<MonitoringPage> {
                   if (!sabunSnapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  usageMonitor.incrementReads(sabunSnapshot.data!.size);
 
                   return StreamBuilder<QuerySnapshot>(
                     stream: bateraiStream,
@@ -154,6 +156,7 @@ class _MonitoringPageState extends State<MonitoringPage> {
                       if (!bateraiSnapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
+                      usageMonitor.incrementReads(bateraiSnapshot.data!.size);
 
                       final tisuFloorMap = <String, List<SensorData>>{};
                       for (var doc in tisuSnapshot.data!.docs) {

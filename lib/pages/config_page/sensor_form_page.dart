@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:janitor_app/utils/firebase_usage_monitor.dart';
 import 'package:janitor_app/utils/string_util.dart';
 
 class SensorFormPage extends StatefulWidget {
@@ -24,7 +25,8 @@ class SensorFormPage extends StatefulWidget {
 class _SensorFormPageState extends State<SensorFormPage> {
   final Map<String, TextEditingController> controllers = {};
   bool isEditing = false;
-  bool luarValue = false; // For the checkbox
+  bool luarValue = false;
+  final usageMonitor = FirestoreUsageMonitor();
 
   @override
   void initState() {
@@ -63,6 +65,8 @@ class _SensorFormPageState extends State<SensorFormPage> {
             .doc(widget.device)
             .get();
 
+    usageMonitor.incrementReads();
+
     final data = snapshot.data() as Map<String, dynamic>;
     for (final entry in data.entries) {
       if (entry.key == "luar") {
@@ -86,6 +90,8 @@ class _SensorFormPageState extends State<SensorFormPage> {
             .where(FieldPath.documentId, isNotEqualTo: widget.device)
             .get();
 
+    usageMonitor.incrementReads(querySnapshot.docs.length);
+
     if (querySnapshot.docs.isNotEmpty &&
         querySnapshot.docs.first.id != widget.device) {
       validation += '!';
@@ -104,6 +110,8 @@ class _SensorFormPageState extends State<SensorFormPage> {
               )
               .where(FieldPath.documentId, isNotEqualTo: widget.device)
               .get();
+
+      usageMonitor.incrementReads(dispenserSnapshot.docs.length);
 
       if (dispenserSnapshot.docs.isNotEmpty &&
           dispenserSnapshot.docs.first.id != widget.device) {
@@ -162,13 +170,14 @@ class _SensorFormPageState extends State<SensorFormPage> {
         return;
       }
 
-      // Save data to Firebase
       await FirebaseFirestore.instance
           .collection('config')
           .doc(widget.company)
           .collection(widget.gender)
           .doc(widget.device)
           .set(updatedData);
+
+      usageMonitor.incrementWrites();
 
       showDialog(
         context: context,
@@ -289,7 +298,6 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
   @override
   void dispose() {
-    // Dispose of all controllers
     for (final controller in controllers.values) {
       controller.dispose();
     }
