@@ -50,7 +50,7 @@ class _ConfigPageState extends State<ConfigPage> {
         await FirebaseFirestore.instance
             .collection('config')
             .doc(widget.company)
-            .collection('data')
+            .collection(gender)
             .get();
 
     usageMonitor.incrementReads(snapshot.docs.length);
@@ -131,6 +131,8 @@ class _ConfigPageState extends State<ConfigPage> {
                                 company: widget.company,
                                 gender: selectedGender!,
                                 device: selectedDevice!,
+                                gedung: selectedGedung!,
+                                location: selectedLokasi!,
                                 onResetSelections: resetSelections,
                               ),
                         ),

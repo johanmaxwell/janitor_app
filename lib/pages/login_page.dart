@@ -175,6 +175,22 @@ class _LoginPageState extends State<LoginPage> {
 
       company = userData['company'];
 
+      DocumentSnapshot companyDoc =
+          await FirebaseFirestore.instance
+              .collection('company')
+              .doc(company)
+              .get();
+
+      if (companyDoc.exists) {
+        final Map<String, dynamic> companyData =
+            companyDoc.data() as Map<String, dynamic>;
+
+        if (companyData['is_deactivated'] == true && mounted) {
+          showDeactivatedCompanyDialog(context);
+          return;
+        }
+      }
+
       //print("password = ${StringUtil.hashPassword(password)}");
       if (userData['password'] == StringUtil.hashPassword(password)) {
         if (userData['role'] == 'admin') {
@@ -303,6 +319,23 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => page),
+    );
+  }
+
+  void showDeactivatedCompanyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Access Denied'),
+            content: Text('The company has been deactivated.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('OK'),
+              ),
+            ],
+          ),
     );
   }
 }

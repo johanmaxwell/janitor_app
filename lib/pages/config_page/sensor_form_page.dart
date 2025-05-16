@@ -8,6 +8,8 @@ class SensorFormPage extends StatefulWidget {
   final String company;
   final String gender;
   final String device;
+  final String gedung;
+  final String location;
   final VoidCallback onResetSelections;
 
   const SensorFormPage({
@@ -15,6 +17,8 @@ class SensorFormPage extends StatefulWidget {
     required this.company,
     required this.gender,
     required this.device,
+    required this.gedung,
+    required this.location,
     required this.onResetSelections,
   });
 
@@ -33,6 +37,8 @@ class _SensorFormPageState extends State<SensorFormPage> {
     super.initState();
     final fields = [
       "mac_address",
+      "version",
+      "company",
       "gedung",
       "gender",
       "lokasi",
@@ -61,7 +67,7 @@ class _SensorFormPageState extends State<SensorFormPage> {
         await FirebaseFirestore.instance
             .collection('config')
             .doc(widget.company)
-            .collection('data')
+            .collection(widget.gender)
             .doc(widget.device)
             .get();
 
@@ -124,6 +130,14 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
   Future<void> saveDataToFirebase() async {
     String message = '';
+    final List<String> types = [
+      'baterai',
+      'bau',
+      'okupansi',
+      'pengunjung',
+      'sabun',
+      'tisu',
+    ];
 
     try {
       final Map<String, dynamic> updatedData = {};
@@ -133,12 +147,28 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
         if (field == "gedung" || field == "lokasi") {
           updatedData[field] = StringUtil.toSnakeCase(controller.text);
+        } else if (field == "version") {
+          final currentVersion = int.tryParse(controller.text) ?? 0;
+          final newVersion = currentVersion + 1;
+          updatedData[field] = newVersion.toString();
+          controller.text = newVersion.toString();
         } else {
           updatedData[field] = controller.text;
         }
       }
 
       updatedData["luar"] = luarValue.toString();
+
+      final deviceNumber = widget.device.split('_').last;
+      final hasChanges =
+          updatedData["company"] != widget.company ||
+          updatedData["gender"] != widget.gender ||
+          updatedData["gedung"] != widget.gedung ||
+          updatedData["lokasi"] != widget.location ||
+          updatedData["nomor_perangkat"] != deviceNumber;
+
+      final newDeviceId =
+          "${updatedData["gedung"]}_${updatedData["lokasi"]}_${updatedData["gender"]}_${updatedData["nomor_perangkat"]}";
 
       final validation = await validateData(updatedData);
       if (validation.contains(RegExp(r'[!*]'))) {
@@ -170,11 +200,55 @@ class _SensorFormPageState extends State<SensorFormPage> {
         return;
       }
 
+      // Move sensor data if key fields have changed
+      if (hasChanges) {
+        final oldDeviceRef = FirebaseFirestore.instance
+            .collection('config')
+            .doc(widget.company)
+            .collection(widget.gender)
+            .doc(widget.device);
+
+        // Delete old device config
+        await oldDeviceRef.delete();
+        usageMonitor.incrementWrites();
+
+        // Migrate sensor data
+        for (final type in types) {
+          final oldSensorRef = FirebaseFirestore.instance
+              .collection('sensor')
+              .doc(widget.company)
+              .collection(widget.gender)
+              .doc(widget.gedung)
+              .collection(type)
+              .doc(widget.device);
+
+          final oldSensorSnapshot = await oldSensorRef.get();
+          usageMonitor.incrementReads();
+          if (oldSensorSnapshot.exists) {
+            final oldSensorData = oldSensorSnapshot.data();
+
+            await oldSensorRef.delete();
+            usageMonitor.incrementWrites();
+
+            await FirebaseFirestore.instance
+                .collection('sensor')
+                .doc(updatedData['company'])
+                .collection(updatedData['gender'])
+                .doc(updatedData['gedung'])
+                .collection(type)
+                .doc(newDeviceId)
+                .set(oldSensorData ?? {});
+
+            usageMonitor.incrementWrites();
+          }
+        }
+      }
+
       await FirebaseFirestore.instance
           .collection('config')
-          .doc(widget.company)
-          .collection(widget.gender)
-          .doc(widget.device)
+          .doc(updatedData["company"])
+          .collection(updatedData["gender"])
+          .doc(newDeviceId)
           .set(updatedData);
 
       usageMonitor.incrementWrites();
@@ -186,7 +260,7 @@ class _SensorFormPageState extends State<SensorFormPage> {
               title: Row(
                 children: [
                   Icon(FontAwesomeIcons.check, color: Colors.yellow),
-                  const Text("Success"),
+                  const Text(" Success"),
                 ],
               ),
               content: const Text("Data Berhasil Diperbarui!"),
@@ -259,11 +333,11 @@ class _SensorFormPageState extends State<SensorFormPage> {
               final field = entry.key;
               final controller = entry.value;
 
-              if (field == "mac_address") {
+              if (field == "mac_address" || field == "version") {
                 return TextField(
                   controller: controller,
                   decoration: InputDecoration(labelText: field),
-                  style: TextStyle(color: Colors.black),
+                  style: const TextStyle(color: Colors.black),
                   enabled: false,
                 );
               }

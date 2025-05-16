@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:janitor_app/main.dart';
 import 'package:janitor_app/pages/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,7 +53,6 @@ class MonitoringHeader extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(width: 10),
                 IconButton(
                   icon: const Icon(Icons.logout, color: Colors.white, size: 28),
                   onPressed: () {
