@@ -29,7 +29,14 @@ class SensorFormPage extends StatefulWidget {
 class _SensorFormPageState extends State<SensorFormPage> {
   final Map<String, TextEditingController> controllers = {};
   bool isEditing = false;
-  bool luarValue = false;
+  final Map<String, bool> checkboxValues = {
+    'okupansi': false,
+    'pengunjung': false,
+    'tisu': false,
+    'sabun': false,
+    'bau': false,
+    'is_luar': false,
+  };
   final usageMonitor = FirestoreUsageMonitor();
 
   @override
@@ -44,15 +51,15 @@ class _SensorFormPageState extends State<SensorFormPage> {
       "lokasi",
       "wifi_password",
       "wifi_ssid",
-      "mqtt_password",
-      "mqtt_port",
       "mqtt_server",
+      "mqtt_port",
       "mqtt_user",
-      "nomor_dispenser",
+      "mqtt_password",
       "nomor_perangkat",
       "nomor_toilet",
-      "setting_berat",
-      "setting_jarak",
+      "nomor_dispenser",
+      "jarak_deteksi",
+      "berat_tisu",
     ];
 
     for (final field in fields) {
@@ -73,13 +80,17 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
     usageMonitor.incrementReads();
 
-    final data = snapshot.data() as Map<String, dynamic>;
-    for (final entry in data.entries) {
-      if (entry.key == "luar") {
-        luarValue = entry.value.toString().toLowerCase() == "true";
-      } else {
-        controllers[entry.key]?.text = entry.value.toString();
+    if (snapshot.exists) {
+      final data = snapshot.data() as Map<String, dynamic>;
+      for (final entry in data.entries) {
+        if (checkboxValues.containsKey(entry.key)) {
+          checkboxValues[entry.key] =
+              entry.value.toString().toLowerCase() == "on";
+        } else {
+          controllers[entry.key]?.text = entry.value.toString();
+        }
       }
+      setState(() {});
     }
   }
 
@@ -157,7 +168,9 @@ class _SensorFormPageState extends State<SensorFormPage> {
         }
       }
 
-      updatedData["luar"] = luarValue.toString();
+      for (final entry in checkboxValues.entries) {
+        updatedData[entry.key] = entry.value ? "on" : "";
+      }
 
       final deviceNumber = widget.device.split('_').last;
       final hasChanges =
@@ -225,7 +238,19 @@ class _SensorFormPageState extends State<SensorFormPage> {
           final oldSensorSnapshot = await oldSensorRef.get();
           usageMonitor.incrementReads();
           if (oldSensorSnapshot.exists) {
-            final oldSensorData = oldSensorSnapshot.data();
+            final oldSensorData = oldSensorSnapshot.data() ?? {};
+
+            // Update lokasi
+            oldSensorData['lokasi'] = updatedData['lokasi'];
+
+            // Update nomor based on type
+            if (type == 'baterai') {
+              oldSensorData['nomor'] = updatedData['nomor_perangkat'];
+            } else if (['bau', 'okupansi', 'tisu'].contains(type)) {
+              oldSensorData['nomor'] = updatedData['nomor_toilet'];
+            } else if (type == 'sabun') {
+              oldSensorData['nomor'] = updatedData['nomor_dispenser'];
+            }
 
             await oldSensorRef.delete();
             usageMonitor.incrementWrites();
@@ -237,13 +262,14 @@ class _SensorFormPageState extends State<SensorFormPage> {
                 .doc(updatedData['gedung'])
                 .collection(type)
                 .doc(newDeviceId)
-                .set(oldSensorData ?? {});
+                .set(oldSensorData);
 
             usageMonitor.incrementWrites();
           }
         }
       }
 
+      // Update the new device config
       await FirebaseFirestore.instance
           .collection('config')
           .doc(updatedData["company"])
@@ -352,18 +378,20 @@ class _SensorFormPageState extends State<SensorFormPage> {
                 style: const TextStyle(color: Colors.black),
               );
             }),
-            CheckboxListTile(
-              title: const Text("Luar"),
-              value: luarValue,
-              onChanged:
-                  isEditing
-                      ? (value) {
-                        setState(() {
-                          luarValue = value!;
-                        });
-                      }
-                      : null,
-            ),
+            ...checkboxValues.entries.map((entry) {
+              return CheckboxListTile(
+                title: Text(entry.key),
+                value: entry.value,
+                onChanged:
+                    isEditing
+                        ? (value) {
+                          setState(() {
+                            checkboxValues[entry.key] = value!;
+                          });
+                        }
+                        : null,
+              );
+            }),
           ],
         ),
       ),
