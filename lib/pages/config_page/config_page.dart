@@ -51,6 +51,7 @@ class _ConfigPageState extends State<ConfigPage> {
             .collection('config')
             .doc(widget.company)
             .collection(gender)
+            .where('lokasi', isEqualTo: selectedLokasi)
             .get();
 
     usageMonitor.incrementReads(snapshot.docs.length);

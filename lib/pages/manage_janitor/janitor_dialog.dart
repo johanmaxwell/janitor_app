@@ -13,11 +13,12 @@ class JanitorDialog {
 
   final usageMonitor = FirestoreUsageMonitor();
 
-  Future<void> addJanitor(BuildContext context) async {
+  Future<void> addJanitor(BuildContext context, String company) async {
     await showDialog(
       context: context,
       builder:
-          (context) => _buildAddEditDialog(context, 'Add New Janitor', null),
+          (context) =>
+              _buildAddEditDialog(context, 'Add New Janitor', null, company),
     );
     _clearControllers();
   }
@@ -28,7 +29,8 @@ class JanitorDialog {
     await showDialog(
       context: context,
       builder:
-          (context) => _buildAddEditDialog(context, 'Edit Janitor', janitor),
+          (context) =>
+              _buildAddEditDialog(context, 'Edit Janitor', janitor, null),
     );
     _clearControllers();
   }
@@ -49,6 +51,7 @@ class JanitorDialog {
     BuildContext context,
     String title,
     JanitorAccount? janitor,
+    String? company,
   ) {
     return AlertDialog(
       title: Text(title),
@@ -129,6 +132,7 @@ class JanitorDialog {
                       _passwordController.text,
                     ),
                     'role': 'janitor',
+                    'company': company,
                     'added_at': Timestamp.now(),
                   });
 

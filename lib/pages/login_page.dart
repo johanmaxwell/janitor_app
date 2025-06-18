@@ -191,12 +191,17 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
 
-      //print("password = ${StringUtil.hashPassword(password)}");
+      print("password = ${StringUtil.hashPassword(password)}");
       if (userData['password'] == StringUtil.hashPassword(password)) {
+        if (userData[company] != null) {
+          usageMonitor.updateCompanyId(userData[company]);
+        }
+
         if (userData['role'] == 'admin') {
           SharedPreferences preferences = await SharedPreferences.getInstance();
           await preferences.setString('role', userData['role']);
           await preferences.setString('company', userData['company']);
+          await preferences.setString('userId', userDoc.id);
 
           if (mounted) {
             navigateToPage(context, AdminPage(company));
@@ -215,13 +220,10 @@ class _LoginPageState extends State<LoginPage> {
 
           usageMonitor.incrementWrites();
 
-          if (userData[company] != null) {
-            usageMonitor.updateCompanyId(userData[company]);
-          }
-
           SharedPreferences preferences = await SharedPreferences.getInstance();
           await preferences.setString('role', userData['role']);
           await preferences.setString('company', userData['company']);
+          await preferences.setString('userId', userDoc.id);
 
           if (mounted) {
             navigateToPage(context, JanitorPage(company));
@@ -242,6 +244,7 @@ class _LoginPageState extends State<LoginPage> {
     final company = preferences.getString('company');
 
     if (company == null) return;
+    usageMonitor.updateCompanyId(company);
 
     if (role != null && role.isNotEmpty) {
       if (mounted) {

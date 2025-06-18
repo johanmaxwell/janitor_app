@@ -129,73 +129,84 @@ class _MonitoringPageState extends State<MonitoringPage> {
       return StreamBuilder<QuerySnapshot>(
         stream: tisuStream,
         builder: (context, tisuSnapshot) {
-          if (!tisuSnapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+          final tisuFloorMap = <String, List<SensorData>>{};
+          if (tisuSnapshot.hasData) {
+            usageMonitor.incrementReads(tisuSnapshot.data!.size);
+            for (var doc in tisuSnapshot.data!.docs) {
+              final data = SensorData.fromFirestore(
+                doc.data() as Map<String, dynamic>,
+              );
+              tisuFloorMap.putIfAbsent(data.lokasi, () => []).add(data);
+            }
           }
-          usageMonitor.incrementReads(tisuSnapshot.data!.size);
 
           return StreamBuilder<QuerySnapshot>(
             stream: bauStream,
             builder: (context, bauSnapshot) {
-              if (!bauSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+              final bauFloorMap = <String, List<SensorData>>{};
+              if (bauSnapshot.hasData) {
+                usageMonitor.incrementReads(bauSnapshot.data!.size);
+                for (var doc in bauSnapshot.data!.docs) {
+                  final data = SensorData.fromFirestoreWithoutAmount(
+                    doc.data() as Map<String, dynamic>,
+                  );
+                  bauFloorMap.putIfAbsent(data.lokasi, () => []).add(data);
+                }
               }
-              usageMonitor.incrementReads(bauSnapshot.data!.size);
 
               return StreamBuilder<QuerySnapshot>(
                 stream: sabunStream,
                 builder: (context, sabunSnapshot) {
-                  if (!sabunSnapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
+                  final sabunFloorMap = <String, List<SensorData>>{};
+                  if (sabunSnapshot.hasData) {
+                    usageMonitor.incrementReads(sabunSnapshot.data!.size);
+                    for (var doc in sabunSnapshot.data!.docs) {
+                      final data = SensorData.fromFirestore(
+                        doc.data() as Map<String, dynamic>,
+                      );
+                      sabunFloorMap
+                          .putIfAbsent(data.lokasi, () => [])
+                          .add(data);
+                    }
                   }
-                  usageMonitor.incrementReads(sabunSnapshot.data!.size);
 
                   return StreamBuilder<QuerySnapshot>(
                     stream: bateraiStream,
                     builder: (context, bateraiSnapshot) {
-                      if (!bateraiSnapshot.hasData) {
+                      final bateraiFloorMap = <String, List<SensorData>>{};
+                      if (bateraiSnapshot.hasData) {
+                        usageMonitor.incrementReads(bateraiSnapshot.data!.size);
+                        for (var doc in bateraiSnapshot.data!.docs) {
+                          final data = SensorData.fromFirestore(
+                            doc.data() as Map<String, dynamic>,
+                          );
+                          bateraiFloorMap
+                              .putIfAbsent(data.lokasi, () => [])
+                              .add(data);
+                        }
+                      }
+
+                      // Show loading indicator only if all streams are still loading
+                      if (!tisuSnapshot.hasData &&
+                          !bauSnapshot.hasData &&
+                          !sabunSnapshot.hasData &&
+                          !bateraiSnapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      usageMonitor.incrementReads(bateraiSnapshot.data!.size);
 
-                      final tisuFloorMap = <String, List<SensorData>>{};
-                      for (var doc in tisuSnapshot.data!.docs) {
-                        final data = SensorData.fromFirestore(
-                          doc.data() as Map<String, dynamic>,
-                        );
-                        tisuFloorMap
-                            .putIfAbsent(data.lokasi, () => [])
-                            .add(data);
-                      }
+                      // Collect all unique locations
+                      final allLocations = <String>{};
+                      allLocations.addAll(tisuFloorMap.keys);
+                      allLocations.addAll(bauFloorMap.keys);
+                      allLocations.addAll(sabunFloorMap.keys);
+                      allLocations.addAll(bateraiFloorMap.keys);
 
-                      final bauFloorMap = <String, List<SensorData>>{};
-                      for (var doc in bauSnapshot.data!.docs) {
-                        final data = SensorData.fromFirestoreWithoutAmount(
-                          doc.data() as Map<String, dynamic>,
-                        );
-                        bauFloorMap
-                            .putIfAbsent(data.lokasi, () => [])
-                            .add(data);
-                      }
-
-                      final sabunFloorMap = <String, List<SensorData>>{};
-                      for (var doc in sabunSnapshot.data!.docs) {
-                        final data = SensorData.fromFirestore(
-                          doc.data() as Map<String, dynamic>,
-                        );
-                        sabunFloorMap
-                            .putIfAbsent(data.lokasi, () => [])
-                            .add(data);
-                      }
-
-                      final bateraiFloorMap = <String, List<SensorData>>{};
-                      for (var doc in bateraiSnapshot.data!.docs) {
-                        final data = SensorData.fromFirestore(
-                          doc.data() as Map<String, dynamic>,
-                        );
-                        bateraiFloorMap
-                            .putIfAbsent(data.lokasi, () => [])
-                            .add(data);
+                      // Ensure all locations exist in all maps
+                      for (final location in allLocations) {
+                        tisuFloorMap.putIfAbsent(location, () => []);
+                        bauFloorMap.putIfAbsent(location, () => []);
+                        sabunFloorMap.putIfAbsent(location, () => []);
+                        bateraiFloorMap.putIfAbsent(location, () => []);
                       }
 
                       return MonitoringAccordionList(

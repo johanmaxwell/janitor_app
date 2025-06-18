@@ -39,7 +39,7 @@ class ConfigHeader extends StatelessWidget {
                 Text(
                   'ESP32 Configuration',
                   style: const TextStyle(
-                    fontSize: 32,
+                    fontSize: 25,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),

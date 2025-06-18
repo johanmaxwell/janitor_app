@@ -2,11 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:janitor_app/pages/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MonitoringHeader extends StatelessWidget {
   final String role;
 
   const MonitoringHeader(this.role, {super.key});
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final userId = preferences.getString('userId');
+
+      if (userId != null) {
+        // Update user's active status to false
+        await FirebaseFirestore.instance.collection('users').doc(userId).update(
+          {'active': false, 'last_seen': FieldValue.serverTimestamp()},
+        );
+      }
+
+      // Clear local preferences
+      await preferences.clear();
+
+      // Navigate to login page
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error during logout: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,19 +105,7 @@ class MonitoringHeader extends StatelessWidget {
                                 child: const Text("Logout"),
                                 onPressed: () {
                                   Navigator.of(context).pop();
-
-                                  Future.delayed(Duration.zero, () async {
-                                    SharedPreferences preferences =
-                                        await SharedPreferences.getInstance();
-                                    await preferences.clear();
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => LoginPage(),
-                                      ),
-                                    );
-                                  });
+                                  _handleLogout(context);
                                 },
                               ),
                             ],

@@ -5,6 +5,7 @@ class JanitorAccount {
   final String fullName;
   final String username;
   final String password;
+  final String? company;
   final Timestamp? lastSeen;
 
   JanitorAccount({
@@ -12,6 +13,7 @@ class JanitorAccount {
     required this.fullName,
     required this.username,
     required this.password,
+    this.company,
     required this.lastSeen,
   });
 
@@ -22,6 +24,7 @@ class JanitorAccount {
       fullName: data['full_name'],
       username: data['username'],
       password: data['password'],
+      company: data['company'],
       lastSeen: data['last_seen'],
     );
   }

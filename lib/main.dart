@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:janitor_app/firebase_options.dart';
 import 'package:janitor_app/pages/login_page.dart';
 import 'package:janitor_app/utils/firebase_usage_monitor.dart';
@@ -11,6 +12,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -44,7 +47,7 @@ class _JanitorAppState extends State<JanitorApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.usageMonitor.flushToFirestore();
+    widget.usageMonitor.dispose();
     super.dispose();
   }
 

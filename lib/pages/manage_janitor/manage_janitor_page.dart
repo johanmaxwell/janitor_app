@@ -113,7 +113,7 @@ class _ManageJanitorPageState extends State<ManageJanitorPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _janitorDialog.addJanitor(context),
+        onPressed: () => _janitorDialog.addJanitor(context, widget.company),
         backgroundColor: Colors.purple,
         child: const Icon(Icons.add, color: Colors.white),
       ),

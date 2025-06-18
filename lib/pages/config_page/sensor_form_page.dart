@@ -37,6 +37,8 @@ class _SensorFormPageState extends State<SensorFormPage> {
     'bau': false,
     'is_luar': false,
   };
+  String? placement = 'left';
+  String? gender = 'pria';
   final usageMonitor = FirestoreUsageMonitor();
 
   @override
@@ -47,7 +49,6 @@ class _SensorFormPageState extends State<SensorFormPage> {
       "version",
       "company",
       "gedung",
-      "gender",
       "lokasi",
       "wifi_password",
       "wifi_ssid",
@@ -86,6 +87,13 @@ class _SensorFormPageState extends State<SensorFormPage> {
         if (checkboxValues.containsKey(entry.key)) {
           checkboxValues[entry.key] =
               entry.value.toString().toLowerCase() == "on";
+        } else if (entry.key == "placement") {
+          placement = entry.value.toString();
+          controllers[entry.key]?.text = entry.value.toString();
+        } else if (entry.key == "gender") {
+          gender =
+              entry.value
+                  .toString(); // Override default if Firebase has a value
         } else {
           controllers[entry.key]?.text = entry.value.toString();
         }
@@ -172,6 +180,33 @@ class _SensorFormPageState extends State<SensorFormPage> {
         updatedData[entry.key] = entry.value ? "on" : "";
       }
 
+      // Handle gender and placement
+      updatedData["gender"] = gender ?? "pria";
+      updatedData["placement"] =
+          placement ?? (checkboxValues['pengunjung']! ? "left" : "");
+
+      // Clear optional fields if their checkboxes are unchecked
+      if (!checkboxValues['okupansi']! &&
+          !checkboxValues['tisu']! &&
+          !checkboxValues['bau']!) {
+        updatedData["nomor_toilet"] = "";
+      }
+      if (!checkboxValues['sabun']!) {
+        updatedData["nomor_dispenser"] = "";
+      }
+      if (!checkboxValues['bau']!) {
+        updatedData["is_luar"] = "";
+      }
+      if (!checkboxValues['okupansi']!) {
+        updatedData["jarak_deteksi"] = "";
+      }
+      if (!checkboxValues['tisu']!) {
+        updatedData["berat_tisu"] = "";
+      }
+      if (!checkboxValues['pengunjung']!) {
+        updatedData["placement"] = "";
+      }
+
       final deviceNumber = widget.device.split('_').last;
       final hasChanges =
           updatedData["company"] != widget.company ||
@@ -185,20 +220,20 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
       final validation = await validateData(updatedData);
       if (validation.contains(RegExp(r'[!*]'))) {
-        if (validation == '!') {
-          message = 'Coba gunakan nomor perangkat yang lain';
-        } else if (validation == '*') {
-          message = 'Coba gunakan nomor dispenser yang lain';
-        } else {
+        if (validation.contains('!') && validation.contains('*')) {
           message =
               'Coba gunakan nomor perangkat dan nomor dispenser yang lain';
+        } else if (validation.contains('!')) {
+          message = 'Coba gunakan nomor perangkat yang lain';
+        } else if (validation.contains('*')) {
+          message = 'Coba gunakan nomor dispenser yang lain';
         }
 
         showDialog(
           context: context,
           builder:
               (context) => AlertDialog(
-                title: const Text("Konfigurasi Telah Digunakan!"),
+                title: const Text("Konfigurasi Tidak Valid!"),
                 content: Text(message),
                 actions: [
                   TextButton(
@@ -221,9 +256,79 @@ class _SensorFormPageState extends State<SensorFormPage> {
             .collection(widget.gender)
             .doc(widget.device);
 
+        // Check if old gedung is still needed in both genders
+        final oldGedungConfigsPria =
+            await FirebaseFirestore.instance
+                .collection('config')
+                .doc(widget.company)
+                .collection('pria')
+                .where('gedung', isEqualTo: widget.gedung)
+                .where(FieldPath.documentId, isNotEqualTo: widget.device)
+                .get();
+
+        final oldGedungConfigsWanita =
+            await FirebaseFirestore.instance
+                .collection('config')
+                .doc(widget.company)
+                .collection('wanita')
+                .where('gedung', isEqualTo: widget.gedung)
+                .get();
+
+        usageMonitor.incrementReads(
+          oldGedungConfigsPria.docs.length + oldGedungConfigsWanita.docs.length,
+        );
+
+        // Check if old lokasi is still needed in both genders
+        final oldLokasiConfigsPria =
+            await FirebaseFirestore.instance
+                .collection('config')
+                .doc(widget.company)
+                .collection('pria')
+                .where('gedung', isEqualTo: widget.gedung)
+                .where('lokasi', isEqualTo: widget.location)
+                .where(FieldPath.documentId, isNotEqualTo: widget.device)
+                .get();
+
+        final oldLokasiConfigsWanita =
+            await FirebaseFirestore.instance
+                .collection('config')
+                .doc(widget.company)
+                .collection('wanita')
+                .where('gedung', isEqualTo: widget.gedung)
+                .where('lokasi', isEqualTo: widget.location)
+                .get();
+
+        usageMonitor.incrementReads(
+          oldLokasiConfigsPria.docs.length + oldLokasiConfigsWanita.docs.length,
+        );
+
         // Delete old device config
         await oldDeviceRef.delete();
         usageMonitor.incrementWrites();
+
+        // Delete old gedung if no other devices use it in either gender
+        if (oldGedungConfigsPria.docs.isEmpty &&
+            oldGedungConfigsWanita.docs.isEmpty) {
+          await FirebaseFirestore.instance
+              .collection('gedung')
+              .doc(widget.company)
+              .collection('daftar')
+              .doc(widget.gedung)
+              .delete();
+          usageMonitor.incrementWrites();
+        }
+
+        // Delete old lokasi if no other devices use it in either gender
+        if (oldLokasiConfigsPria.docs.isEmpty &&
+            oldLokasiConfigsWanita.docs.isEmpty) {
+          await FirebaseFirestore.instance
+              .collection('lokasi')
+              .doc(widget.company)
+              .collection(widget.gedung)
+              .doc(widget.location)
+              .delete();
+          usageMonitor.incrementWrites();
+        }
 
         // Migrate sensor data
         for (final type in types) {
@@ -279,6 +384,29 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
       usageMonitor.incrementWrites();
 
+      // Update gedung collection
+      await FirebaseFirestore.instance
+          .collection('gedung')
+          .doc(updatedData["company"])
+          .collection('daftar')
+          .doc(updatedData["gedung"])
+          .set({'company': updatedData["company"]}, SetOptions(merge: true));
+
+      usageMonitor.incrementWrites();
+
+      // Update lokasi collection
+      await FirebaseFirestore.instance
+          .collection('lokasi')
+          .doc(updatedData["company"])
+          .collection(updatedData["gedung"])
+          .doc(updatedData["lokasi"])
+          .set({
+            'company': updatedData["company"],
+            'gedung': updatedData["gedung"],
+          }, SetOptions(merge: true));
+
+      usageMonitor.incrementWrites();
+
       showDialog(
         context: context,
         builder:
@@ -322,6 +450,22 @@ class _SensorFormPageState extends State<SensorFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Always visible fields
+    final List<String> alwaysVisibleFields = [
+      "mac_address",
+      "version",
+      "company",
+      "gedung",
+      "lokasi",
+      "wifi_ssid",
+      "wifi_password",
+      "mqtt_server",
+      "mqtt_port",
+      "mqtt_user",
+      "mqtt_password",
+      "nomor_perangkat",
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Edit Config - Device ${widget.device}"),
@@ -355,29 +499,62 @@ class _SensorFormPageState extends State<SensorFormPage> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            ...controllers.entries.map((entry) {
-              final field = entry.key;
-              final controller = entry.value;
-
-              if (field == "mac_address" || field == "version") {
-                return TextField(
-                  controller: controller,
-                  decoration: InputDecoration(labelText: field),
-                  style: const TextStyle(color: Colors.black),
-                  enabled: false,
-                );
-              }
-
+            // Always visible text fields
+            ...alwaysVisibleFields.map((field) {
+              final controller = controllers[field];
+              if (controller == null) return const SizedBox.shrink();
               return TextField(
                 controller: controller,
                 decoration: InputDecoration(
                   labelText: field,
-                  enabled: isEditing && field != "mac_address",
+                  enabled:
+                      isEditing && field != "mac_address" && field != "version",
                 ),
-                enabled: isEditing && field != "mac_address",
+                enabled:
+                    isEditing && field != "mac_address" && field != "version",
                 style: const TextStyle(color: Colors.black),
               );
             }),
+            // Gender radio buttons
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'Gender',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Pria'),
+                  value: 'pria',
+                  groupValue: gender,
+                  onChanged:
+                      isEditing
+                          ? (value) {
+                            setState(() {
+                              gender = value;
+                            });
+                          }
+                          : null,
+                ),
+                RadioListTile<String>(
+                  title: const Text('Wanita'),
+                  value: 'wanita',
+                  groupValue: gender,
+                  onChanged:
+                      isEditing
+                          ? (value) {
+                            setState(() {
+                              gender = value;
+                            });
+                          }
+                          : null,
+                ),
+              ],
+            ),
+            // Checkbox fields
             ...checkboxValues.entries.map((entry) {
               return CheckboxListTile(
                 title: Text(entry.key),
@@ -392,6 +569,101 @@ class _SensorFormPageState extends State<SensorFormPage> {
                         : null,
               );
             }),
+            // Conditional optional fields
+            if (checkboxValues['okupansi']! ||
+                checkboxValues['tisu']! ||
+                checkboxValues['bau']!)
+              TextField(
+                controller: controllers["nomor_toilet"],
+                decoration: InputDecoration(
+                  labelText: "nomor_toilet",
+                  enabled: isEditing,
+                ),
+                enabled: isEditing,
+                style: const TextStyle(color: Colors.black),
+              ),
+            if (checkboxValues['sabun']!)
+              TextField(
+                controller: controllers["nomor_dispenser"],
+                decoration: InputDecoration(
+                  labelText: "nomor_dispenser",
+                  enabled: isEditing,
+                ),
+                enabled: isEditing,
+                style: const TextStyle(color: Colors.black),
+              ),
+            if (checkboxValues['bau']!)
+              TextField(
+                controller: controllers["is_luar"],
+                decoration: InputDecoration(
+                  labelText: "is_luar",
+                  enabled: isEditing,
+                ),
+                enabled: isEditing,
+                style: const TextStyle(color: Colors.black),
+              ),
+            if (checkboxValues['okupansi']!)
+              TextField(
+                controller: controllers["jarak_deteksi"],
+                decoration: InputDecoration(
+                  labelText: "jarak_deteksi",
+                  enabled: isEditing,
+                ),
+                enabled: isEditing,
+                style: const TextStyle(color: Colors.black),
+              ),
+            if (checkboxValues['tisu']!)
+              TextField(
+                controller: controllers["berat_tisu"],
+                decoration: InputDecoration(
+                  labelText: "berat_tisu",
+                  enabled: isEditing,
+                ),
+                enabled: isEditing,
+                style: const TextStyle(color: Colors.black),
+              ),
+            if (checkboxValues['pengunjung']!)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'Sensor Placement',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Left'),
+                    value: 'left',
+                    groupValue: placement,
+                    onChanged:
+                        isEditing
+                            ? (value) {
+                              setState(() {
+                                placement = value;
+                              });
+                            }
+                            : null,
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Right'),
+                    value: 'right',
+                    groupValue: placement,
+                    onChanged:
+                        isEditing
+                            ? (value) {
+                              setState(() {
+                                placement = value;
+                              });
+                            }
+                            : null,
+                  ),
+                ],
+              ),
           ],
         ),
       ),
